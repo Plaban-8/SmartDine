@@ -18,9 +18,6 @@ MOV DS,AX
 
 
 
-
- 
-
 ;exit to DOS
                
 MOV AX,4C00H
