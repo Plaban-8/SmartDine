@@ -13,6 +13,15 @@ EXIT_MSG        DB 0Dh, 0Ah, 'Exiting System...$'
 ADMIN_PASS      DB '1234'
 WAITER_PASS     DB '5678'
 
+MsgSubtotal    DB 10,13, 'Subtotal: $'
+MsgTax         DB 10,13, 'Tax (5%): $'
+MsgService     DB 10,13, 'Service (2%): $'
+MsgGrandTotal  DB 10,13, 'Grand Total: $'
+MsgPaid        DB 10,13, 'Bill Paid. Table Released.$'
+DailyRevenue   DW 0
+TotalOrders    DW 0
+
+
 .CODE
 MAIN PROC
 
@@ -21,7 +30,7 @@ MAIN PROC
 MOV AX,@DATA
 MOV DS,AX
  
-;Main Menu
+
 MAIN_MENU:
     LEA DX, HEADER_TXT
     MOV AH, 9
@@ -74,8 +83,7 @@ ADMIN_GRANTED:
     INT 21H
     MOV AH, 1               
     INT 21H
-    ; Implement: JMP ADMIN_DASHBOARD
-    ; For Now: JMP MAIN_MENU           
+    ; Implement: JMP ADMIN_DASHBOARD         
 
 WAITER_GRANTED:
     LEA DX, LOGIN_SUCCESS
@@ -83,8 +91,7 @@ WAITER_GRANTED:
     INT 21H
     MOV AH, 1               
     INT 21H
-    ; Implement: JMP WAITER_DASHBOARD 
-    ; For Now: JMP MAIN_MENU        
+    ; Implement: JMP WAITER_DASHBOARD        
 
 ACCESS_DENIED:
     LEA DX, LOGIN_FAIL
@@ -128,6 +135,97 @@ CONTINUE_LOOP:
     LOOP CHECK_LOOP
     RET
 
-CHECK_PASSWORD ENDP
+CHECK_PASSWORD ENDP 
+
+GENERATE_BILL PROC
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+    PUSH DI
+
+    LEA DX, MsgAskTable
+    MOV AH, 9
+    INT 21H
+
+    MOV AH, 1
+    INT 21H
+    SUB AL, '1'
+    MOV AH, 0
+    MOV DI, AX
+           
+
+    MOV SI, DI
+    ADD SI, SI
+
+    MOV AX, TableBill[SI]
+    CMP AX, 0
+    JE GB_EXIT
+
+    MOV TempNum, AX   
+
+
+    LEA DX, MsgSubtotal
+    MOV AH, 9
+    INT 21H
+    MOV AX, TempNum
+    CALL PRINT_NUMBER
+
+    LEA DX, MsgTax
+    MOV AH, 9
+    INT 21H
+    MOV AX, TempNum
+    MOV CX, 5
+    MUL CX               
+    MOV CX, 100
+    DIV CX              
+    PUSH AX
+    CALL PRINT_NUMBER
+
+    LEA DX, MsgService
+    MOV AH, 9
+    INT 21H
+    MOV AX, TempNum
+    MOV CX, 2
+    MUL CX
+    MOV CX, 100
+    DIV CX               
+    PUSH AX
+    CALL PRINT_NUMBER
+
+    LEA DX, MsgGrandTotal
+    MOV AH, 9
+    INT 21H
+    POP CX            
+    POP BX               
+    MOV AX, TempNum
+    ADD AX, BX
+    ADD AX, CX
+    PUSH AX
+    CALL PRINT_NUMBER
+
+    POP AX
+    ADD DailyRevenue, AX
+    INC TotalOrders
+
+    LEA DX, MsgPaid
+    MOV AH, 9
+    INT 21H
+
+    MOV TableStatus[DI], 0
+    MOV TableBill[SI], 0
+    MOV TableOrderCounts[DI], 0
+
+GB_EXIT:
+    POP DI
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+
+GENERATE_BILL ENDP
 
     END MAIN
