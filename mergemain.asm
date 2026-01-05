@@ -64,10 +64,10 @@ IngQty DW 10, 20, 15, 12, 5, 8
 NUM_TABLES EQU 5
 MAX_ORDERS_PER_TABLE EQU 10
 
-TableStatus      DB 0,0,0,0,0       ; 0 = Available, 1 = Occupied
+TableStatus      DB 0,0,0,0,0       
 TableBill        DW 0,0,0,0,0 
-TableOrderCounts DB 5 DUP(0)        ; Count of items per table
-TableOrders      DB 50 DUP(0)       ; 5 tables * 10 items (stores Dish IDs) 
+TableOrderCounts DB 5 DUP(0)        
+TableOrders      DB 50 DUP(0)      
 
 ; MESSAGES
 MsgNewline    DB 10, 13, '$'
@@ -189,9 +189,9 @@ msg_total_revenue   DB 0DH,0AH,'Total revenue: ','$'
 msg_list_header     DB 0DH,0AH,'Sales list:',0DH,0AH,'$'
 ss_msg_colon_space  DB ': ','$'
 
-sales_count     DW 0                    ; how many sales recorded
-total_revenue   DW 0                    ; sum of all sales
-sales_amounts   DW MAX_SALES DUP(0)     ; each sale amount
+sales_count     DW 0                    
+total_revenue   DW 0                    
+sales_amounts   DW MAX_SALES DUP(0)     
 
 ; menu input: max 3 chars (e.g. "12")
 
@@ -223,7 +223,7 @@ NEWLINE MACRO
 ENDM
 
 ;======================================================
-; MenuManagement.asm helper procedures (unchanged logic)
+; MenuManagement.asm helper procedures
 ;======================================================
 
 ; PrintZString DS:SI until '$'
@@ -259,14 +259,14 @@ ReadNumber PROC
     mov cl, num_len
     mov ch, 0
     lea si, num_data
-    xor ax, ax           ; result = 0
+    xor ax, ax           
 
 rn_loop:
     cmp cx, 0
     je  rn_done
 
     mov dl, [si]
-    cmp dl, 0DH         ; CR
+    cmp dl, 0DH         
     je  rn_done
 
     cmp dl, '0'
@@ -276,12 +276,12 @@ rn_loop:
 
     sub dl, '0'
     mov bx, 0
-    mov bl, dl          ; digit in BX
+    mov bl, dl         
 
     xor dx, dx
     mov cx, 10
-    mul cx              ; AX = AX * 10
-    add ax, bx          ; + digit
+    mul cx              
+    add ax, bx          
 
 rn_next:
     inc si
@@ -323,7 +323,7 @@ pn_clear:
 pn_loop:
     xor dx, dx
     mov bx, 10
-    div bx              ; AX/10, remainder in DX
+    div bx              
     add dl, '0'
     mov [si], dl
     dec si
@@ -350,19 +350,19 @@ ReadNameToDest PROC
     push cx
     push dx
 
-    mov cx, 0                    ; number of chars stored
+    mov cx, 0                    
 
 rnt_loop:
-    mov ah, 01h                  ; read char with echo
-    int 21h                      ; AL = char
+    mov ah, 01h                 
+    int 21h                      
 
-    cmp al, 0Dh                  ; Enter pressed?
+    cmp al, 0Dh                  
     je  rnt_done
 
-    cmp cx, NAME_LEN-1           ; keep space for '$'
-    jae rnt_flush                ; ignore extra chars but keep reading rest
+    cmp cx, NAME_LEN-1          
+    jae rnt_flush               
 
-    mov [di], al                 ; store character
+    mov [di], al                 
     inc di
     inc cx
     jmp rnt_loop
@@ -371,7 +371,7 @@ rnt_flush:
     jmp rnt_loop
 
 rnt_done:
-    mov byte ptr [di], '$'       ; terminate string
+    mov byte ptr [di], '$'       
 
     pop dx
     pop cx
@@ -399,7 +399,7 @@ MM_ShowMenu PROC
 sm_has_items:
     mov cl, menu_count
     mov ch, 0
-    mov bl, 0           ; index = 0
+    mov bl, 0           
 
 sm_loop:
     ; index (1-based)
@@ -423,7 +423,7 @@ sm_loop:
     shl ax, 1
     shl ax, 1
     shl ax, 1
-    shl ax, 1           ; *16
+    shl ax, 1           
     lea di, menu_names
     add di, ax
     mov si, di
@@ -436,7 +436,7 @@ sm_loop:
     pop bx
     xor bh, bh
     mov ax, bx
-    shl ax, 1           ; *2
+    shl ax, 1           
     lea si, menu_prices
     add si, ax
     mov ax, [si]
@@ -480,20 +480,20 @@ can_add:
     shl ax, 1
     shl ax, 1
     shl ax, 1
-    shl ax, 1           ; *16
+    shl ax, 1           
     lea di, menu_names
     add di, ax
 
     call ReadNameToDest
 
     PRINT msg_enter_price
-    call ReadNumber      ; AX = price
+    call ReadNumber      
 
     mov bl, menu_count
     xor bh, bh
     mov dx, ax
     mov ax, bx
-    shl ax, 1            ; *2
+    shl ax, 1            
     lea si, menu_prices
     add si, ax
     mov [si], dx
@@ -525,7 +525,7 @@ UpdateDishPrice PROC
 udp_has:
     call MM_ShowMenu
     PRINT msg_select_dish
-    call ReadNumber      ; AX = dish number
+    call ReadNumber      
 
     cmp ax, 1
     jb  udp_invalid
@@ -534,16 +534,16 @@ udp_has:
     cmp ax, bx
     ja  udp_invalid
 
-    dec ax               ; 0-based
+    dec ax               
     mov bl, al
 
     PRINT msg_enter_price
-    call ReadNumber      ; new price -> AX
+    call ReadNumber      
     mov dx, ax
 
     xor bh, bh
     mov ax, bx
-    shl ax, 1            ; *2
+    shl ax, 1            
     lea si, menu_prices
     add si, ax
     mov [si], dx
@@ -579,7 +579,7 @@ RemoveDish PROC
 rd_has:
     call MM_ShowMenu
     PRINT msg_select_dish
-    call ReadNumber      ; AX = dish number
+    call ReadNumber      
 
     cmp ax, 1
     jb  rd_invalid
@@ -588,14 +588,14 @@ rd_has:
     cmp ax, bx
     ja  rd_invalid
 
-    dec ax               ; 0-based
+    dec ax               
     mov bl, al
 
     ; last index = menu_count - 1
     mov al, menu_count
     dec al
     cmp bl, al
-    jae rd_skip_shift    ; removing last
+    jae rd_skip_shift    
 
 rd_outer:
     ; src index = BL + 1
@@ -607,7 +607,7 @@ rd_outer:
     shl ax, 1
     shl ax, 1
     lea si, menu_names
-    add si, ax          ; SI = name[BL+1]
+    add si, ax         
 
     ; dest index = BL
     mov ax, bx
@@ -616,7 +616,7 @@ rd_outer:
     shl ax, 1
     shl ax, 1
     lea di, menu_names
-    add di, ax          ; DI = name[BL]
+    add di, ax          
 
     mov cx, NAME_LEN
 rd_copy_name:
@@ -631,13 +631,13 @@ rd_copy_name:
     mov ax, bx
     shl ax, 1
     lea di, menu_prices
-    add di, ax          ; dest
+    add di, ax          
 
     mov ax, bx
     inc ax
     shl ax, 1
     lea si, menu_prices
-    add si, ax          ; src
+    add si, ax          
 
     mov ax, [si]
     mov [di], ax
@@ -672,7 +672,7 @@ mm_loop:
     PRINT msg_menu_title
     PRINT msg_menu_options
     PRINT msg_choice
-    call ReadNumber      ; AX = choice
+    call ReadNumber      
 
     cmp ax, 1
     je  mm_show
@@ -729,7 +729,7 @@ SS_ReadNumber PROC
     mov cl, num_buf_len
     mov ch, 0
     lea si, num_buf_data
-    xor ax, ax               ; AX = result = 0
+    xor ax, ax               
 
 ss_rn_loop:
     cmp cx, 0
@@ -742,14 +742,14 @@ ss_rn_loop:
     cmp dl, '9'
     ja  ss_rn_next
 
-    sub dl, '0'              ; DL = digit 0..9
+    sub dl, '0'              
     mov dh, 0
-    mov bx, dx               ; BX = digit
+    mov bx, dx               
 
     mov dx, 0
     mov cx, 10
-    mul cx                   ; DX:AX = AX * 10
-    add ax, bx               ; AX = AX*10 + digit
+    mul cx                   
+    add ax, bx               
 
 ss_rn_next:
     inc si
@@ -779,20 +779,20 @@ S_PrintNumber PROC
     jmp ss_pn_done
 
 ss_pn_convert:
-    mov cx, 0                ; digit count
+    mov cx, 0                
 
 ss_pn_div_loop:
     xor dx, dx
     mov bx, 10
-    div bx                   ; AX = AX/10, DX = remainder
-    push dx                  ; push remainder
+    div bx                   
+    push dx                  
     inc cx
     cmp ax, 0
     jne ss_pn_div_loop
 
 ss_pn_print_loop:
     pop dx
-    add dl, '0'              ; DL = '0' + digit
+    add dl, '0'             
     mov ah, 2
     int 21h
     loop ss_pn_print_loop
@@ -819,11 +819,11 @@ AddSale PROC
 
 as_can:
     PRINT msg_enter_amount
-    call SS_ReadNumber          ; AX = amount
+    call SS_ReadNumber          
 
     ; store AX into sales_amounts[sales_count]
     mov bx, sales_count
-    shl bx, 1                ; *2 (word index)
+    shl bx, 1               
     mov si, OFFSET sales_amounts
     add si, bx
     mov [si], ax
@@ -878,8 +878,8 @@ sr_has2:
     ; list
     PRINT msg_list_header
 
-    mov cx, sales_count      ; CX = number of sales
-    xor di, di               ; DI = index = 0
+    mov cx, sales_count      
+    xor di, di               
 
 sr_loop2:
     cmp di, cx
@@ -893,7 +893,7 @@ sr_loop2:
 
     ; print sales_amounts[di]
     mov bx, di
-    shl bx, 1                ; *2
+    shl bx, 1                
     mov si, OFFSET sales_amounts
     add si, bx
     mov ax, [si]
@@ -913,7 +913,7 @@ sr_done2:
     ret
 ShowReport ENDP
 
-; Sales & Report main loop (called from Admin dashboard)
+; Sales & Report main loop
 
 
 ;======================================================
@@ -942,7 +942,7 @@ SHOW_TABLE_LOOP:
     INT 21H
     
     MOV AX, BX
-    INC AX              ; Convert to 1-based
+    INC AX              
     CALL PRINT_NUMBER
     
     ;table status check and print Available/Occupied
@@ -1016,7 +1016,7 @@ TABLE_OK2:
     
     ;print table num
     MOV AX, BX
-    INC AX              ; 1-based for display
+    INC AX              
     CALL PRINT_NUMBER
     
     ;show food menu
@@ -1082,7 +1082,7 @@ GET_DISH2:
     
     ;update table status and bill
     MOV BX, CurrentTable
-    MOV TableStatus[BX], 1      ;mark as occupied
+    MOV TableStatus[BX], 1      
     
     ;add dish price to table bill
     MOV SI, CurrentDish
@@ -1174,7 +1174,7 @@ SHOW_MENU PROC
     INT 21H
 
     MOV CX, NUM_DISHES
-    MOV BX, 0           ; Dish index
+    MOV BX, 0           
     
 SHOW_DISH_LOOP2:
     LEA DX, MsgNewline
@@ -1256,7 +1256,7 @@ SHOW_ING_LOOP2:
     
     MOV SI, BX
     MOV AX, ING_NAME_LEN
-    MUL SI              ; AX = offset into IngName
+    MUL SI              
     MOV SI, AX
     
     PUSH CX
@@ -1305,13 +1305,13 @@ GET_ING2:
     MOV AH, 01H
     INT 21H
     
-    SUB AL, '1'         ; Convert ASCII to 0-based index
+    SUB AL, '1'        
     MOV BL, AL
     MOV BH, 0
     
     ; check if ing within range
     CMP BX, NUM_INGS
-    JAE GET_ING2         ; If >= NUM_INGS, ask again
+    JAE GET_ING2         
     
     ;save ingredient index
     PUSH BX
@@ -1502,16 +1502,16 @@ ADMIN_LOGIN:
     MOV AH, 9
     INT 21H
 
-    MOV CX, 4              ; password length
-    LEA SI, ADMIN_PASS     ; correct password "1234"
+    MOV CX, 4              
+    LEA SI, ADMIN_PASS     
 
 AL_ADMIN_LOOP:
-    MOV AH, 1              ; read char with echo
-    INT 21H                ; AL = typed char
-    CMP AL, [SI]           ; compare to stored char
-    JNE ACCESS_DENIED      ; mismatch -> fail
-    INC SI                 ; next stored char
-    LOOP AL_ADMIN_LOOP     ; repeat 4 times
+    MOV AH, 1              
+    INT 21H                
+    CMP AL, [SI]          
+    JNE ACCESS_DENIED      
+    INC SI                 
+    LOOP AL_ADMIN_LOOP     
 
     ; all 4 characters matched
     JMP ADMIN_GRANTED
@@ -1523,8 +1523,8 @@ WAITER_LOGIN:
     MOV AH, 9
     INT 21H
 
-    MOV CX, 4              ; password length
-    LEA SI, WAITER_PASS    ; correct password "5678"
+    MOV CX, 4              
+    LEA SI, WAITER_PASS    
 
 AL_WAITER_LOOP:
     MOV AH, 1
@@ -1593,9 +1593,8 @@ SALES_MAIN_LOOP:
     PRINT ss_msg_main_menu
     PRINT ss_msg_choice
 
-    ; read ONE key (no Enter required for the menu choice)
     mov ah, 1
-    int 21h                ; AL = key pressed
+    int 21h                
 
     cmp al, '1'
     je  SALES_DO_ADD
