@@ -11,7 +11,7 @@
 ;-------------------------------------------
 ; CONSTANTS
 ;-------------------------------------------
-MAX_SALES   EQU 50      ; maximum number of sales we store
+MAX_SALES   EQU 50    
 
 .DATA
 ;-------------------------------------------
@@ -38,9 +38,9 @@ msg_colon_space     DB ': ','$'
 ; SALES DATA
 ;-------------------------------------------
 
-sales_count     DW 0                    ; how many sales recorded
-total_revenue   DW 0                    ; sum of all sales
-sales_amounts   DW MAX_SALES DUP(0)     ; each sale amount
+sales_count     DW 0                    
+total_revenue   DW 0                    
+sales_amounts   DW MAX_SALES DUP(0)    
 
 ;-------------------------------------------
 ; INPUT BUFFERS
@@ -89,7 +89,7 @@ ReadMenuChoice PROC
     mov ah, 0Ah
     int 21h
 
-    mov al, menu_buf_data    ; first character typed
+    mov al, menu_buf_data    
 
     pop dx
     ret
@@ -115,7 +115,7 @@ ReadNumber PROC
     mov cl, num_buf_len
     mov ch, 0
     lea si, num_buf_data
-    xor ax, ax               ; AX = result = 0
+    xor ax, ax               
 
 rn_loop:
     cmp cx, 0
@@ -128,14 +128,14 @@ rn_loop:
     cmp dl, '9'
     ja  rn_next
 
-    sub dl, '0'              ; DL = digit 0..9
+    sub dl, '0'              
     mov dh, 0
-    mov bx, dx               ; BX = digit
+    mov bx, dx               
 
     mov dx, 0
     mov cx, 10
-    mul cx                   ; DX:AX = AX * 10
-    add ax, bx               ; AX = AX*10 + digit
+    mul cx                   
+    add ax, bx              
 
 rn_next:
     inc si
@@ -169,20 +169,20 @@ PrintNumber PROC
     jmp pn_done
 
 pn_convert:
-    mov cx, 0                ; digit count
+    mov cx, 0                
 
 pn_div_loop:
     xor dx, dx
     mov bx, 10
-    div bx                   ; AX = AX/10, DX = remainder
-    push dx                  ; push remainder
+    div bx                  
+    push dx                  
     inc cx
     cmp ax, 0
     jne pn_div_loop
 
 pn_print_loop:
     pop dx
-    add dl, '0'              ; DL = '0' + digit
+    add dl, '0'             
     mov ah, 2
     int 21h
     loop pn_print_loop
@@ -214,11 +214,11 @@ AddSale PROC
 
 as_can:
     PRINT msg_enter_amount
-    call ReadNumber          ; AX = amount
+    call ReadNumber          
 
     ; store AX into sales_amounts[sales_count]
     mov bx, sales_count
-    shl bx, 1                ; *2 (word index)
+    shl bx, 1               
     mov si, OFFSET sales_amounts
     add si, bx
     mov [si], ax
@@ -276,8 +276,8 @@ sr_has:
     ; list
     PRINT msg_list_header
 
-    mov cx, sales_count      ; CX = number of sales
-    xor di, di               ; DI = index = 0
+    mov cx, sales_count     
+    xor di, di              
 
 sr_loop:
     cmp di, cx
@@ -291,7 +291,7 @@ sr_loop:
 
     ; print sales_amounts[di]
     mov bx, di
-    shl bx, 1                ; *2
+    shl bx, 1                
     mov si, OFFSET sales_amounts
     add si, bx
     mov ax, [si]
@@ -322,7 +322,7 @@ main_loop:
     PRINT msg_main_title
     PRINT msg_main_menu
     PRINT msg_choice
-    call ReadMenuChoice      ; AL = first character typed
+    call ReadMenuChoice      
 
     cmp al, '1'
     je  do_add
