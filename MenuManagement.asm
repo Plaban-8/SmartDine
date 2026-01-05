@@ -10,7 +10,7 @@
 ; CONSTANTS
 ;-------------------------------------------
 MAX_DISHES  EQU 10
-NAME_LEN    EQU 16          ; 15 chars + '$'
+NAME_LEN    EQU 16          
 
 .DATA
 ;-------------------------------------------
@@ -40,7 +40,7 @@ msg_colon_space     DB ': ','$'
 ;-------------------------------------------
 ; MENU DATA
 ;-------------------------------------------
-menu_count      DB 0                        ; how many dishes
+menu_count      DB 0                        
 menu_names      DB MAX_DISHES*NAME_LEN DUP('$')
 menu_prices     DW MAX_DISHES DUP(0)
 
@@ -53,7 +53,7 @@ num_buffer      DB 5
 num_len         DB ?
 num_data        DB 5 DUP(?)
 
-num_out         DB 6 DUP('$')  ; for PrintNumber
+num_out         DB 6 DUP('$') 
 
 ;-------------------------------------------
 ; MACROS
@@ -111,14 +111,14 @@ ReadNumber PROC
     mov cl, num_len
     mov ch, 0
     lea si, num_data
-    xor ax, ax           ; result = 0
+    xor ax, ax           
 
 rn_loop:
     cmp cx, 0
     je  rn_done
 
     mov dl, [si]
-    cmp dl, 0DH         ; CR
+    cmp dl, 0DH       
     je  rn_done
 
     cmp dl, '0'
@@ -128,12 +128,12 @@ rn_loop:
 
     sub dl, '0'
     mov bx, 0
-    mov bl, dl          ; digit in BX
+    mov bl, dl        
 
     xor dx, dx
     mov cx, 10
-    mul cx              ; AX = AX * 10
-    add ax, bx          ; + digit
+    mul cx             
+    add ax, bx        
 
 rn_next:
     inc si
@@ -177,7 +177,7 @@ pn_clear:
 pn_loop:
     xor dx, dx
     mov bx, 10
-    div bx              ; AX/10, remainder in DX
+    div bx             
     add dl, '0'
     mov [si], dl
     dec si
@@ -199,27 +199,26 @@ pn_done:
 PrintNumber ENDP
 
 ;-------------------------------------------
-; HELPER: ReadNameToDest DS:DI
-; *** FIXED VERSION: no more missing first letter ***
+; HELPER: Problem hoise
 ;-------------------------------------------
 ReadNameToDest PROC
     push ax
     push cx
     push dx
 
-    mov cx, 0                    ; number of chars stored
+    mov cx, 0                   
 
 rnt_loop:
-    mov ah, 01h                  ; read char with echo
-    int 21h                      ; AL = char
+    mov ah, 01h                  
+    int 21h                      
 
-    cmp al, 0Dh                  ; Enter pressed?
+    cmp al, 0Dh                 
     je  rnt_done
 
-    cmp cx, NAME_LEN-1           ; keep space for '$'
-    jae rnt_flush                ; ignore extra chars but keep reading rest
+    cmp cx, NAME_LEN-1          
+    jae rnt_flush                
 
-    mov [di], al                 ; store character
+    mov [di], al                
     inc di
     inc cx
     jmp rnt_loop
@@ -229,7 +228,7 @@ rnt_flush:
     jmp rnt_loop
 
 rnt_done:
-    mov byte ptr [di], '$'       ; terminate string
+    mov byte ptr [di], '$'      
 
     pop dx
     pop cx
@@ -259,7 +258,7 @@ ShowMenu PROC
 sm_has_items:
     mov cl, menu_count
     mov ch, 0
-    mov bl, 0           ; index = 0
+    mov bl, 0          
 
 sm_loop:
     ; index (1-based)
@@ -283,7 +282,7 @@ sm_loop:
     shl ax, 1
     shl ax, 1
     shl ax, 1
-    shl ax, 1           ; *16
+    shl ax, 1           
     lea di, menu_names
     add di, ax
     mov si, di
@@ -296,7 +295,7 @@ sm_loop:
     pop bx
     xor bh, bh
     mov ax, bx
-    shl ax, 1           ; *2
+    shl ax, 1          
     lea si, menu_prices
     add si, ax
     mov ax, [si]
@@ -343,20 +342,20 @@ can_add:
     shl ax, 1
     shl ax, 1
     shl ax, 1
-    shl ax, 1           ; *16
+    shl ax, 1           
     lea di, menu_names
     add di, ax
 
     call ReadNameToDest ; <-- now correct
 
     PRINT msg_enter_price
-    call ReadNumber      ; AX = price
+    call ReadNumber      
 
     mov bl, menu_count
     xor bh, bh
     mov dx, ax
     mov ax, bx
-    shl ax, 1            ; *2
+    shl ax, 1            
     lea si, menu_prices
     add si, ax
     mov [si], dx
@@ -391,7 +390,7 @@ UpdateDishPrice PROC
 udp_has:
     call ShowMenu
     PRINT msg_select_dish
-    call ReadNumber      ; AX = dish number
+    call ReadNumber      
 
     cmp ax, 1
     jb  udp_invalid
@@ -400,16 +399,16 @@ udp_has:
     cmp ax, bx
     ja  udp_invalid
 
-    dec ax               ; 0-based
+    dec ax              
     mov bl, al
 
     PRINT msg_enter_price
-    call ReadNumber      ; new price -> AX
+    call ReadNumber      
     mov dx, ax
 
     xor bh, bh
     mov ax, bx
-    shl ax, 1            ; *2
+    shl ax, 1            
     lea si, menu_prices
     add si, ax
     mov [si], dx
@@ -448,7 +447,7 @@ RemoveDish PROC
 rd_has:
     call ShowMenu
     PRINT msg_select_dish
-    call ReadNumber      ; AX = dish number
+    call ReadNumber      
 
     cmp ax, 1
     jb  rd_invalid
@@ -457,14 +456,14 @@ rd_has:
     cmp ax, bx
     ja  rd_invalid
 
-    dec ax               ; 0-based
+    dec ax               
     mov bl, al
 
     ; last index = menu_count - 1
     mov al, menu_count
     dec al
     cmp bl, al
-    jae rd_skip_shift    ; removing last
+    jae rd_skip_shift  
 
 rd_outer:
     ; src index = BL + 1
@@ -476,7 +475,7 @@ rd_outer:
     shl ax, 1
     shl ax, 1
     lea si, menu_names
-    add si, ax          ; SI = name[BL+1]
+    add si, ax         
 
     ; dest index = BL
     mov ax, bx
@@ -485,7 +484,7 @@ rd_outer:
     shl ax, 1
     shl ax, 1
     lea di, menu_names
-    add di, ax          ; DI = name[BL]
+    add di, ax         
 
     mov cx, NAME_LEN
 rd_copy_name:
@@ -500,13 +499,13 @@ rd_copy_name:
     mov ax, bx
     shl ax, 1
     lea di, menu_prices
-    add di, ax          ; dest
+    add di, ax          
 
     mov ax, bx
     inc ax
     shl ax, 1
     lea si, menu_prices
-    add si, ax          ; src
+    add si, ax          
 
     mov ax, [si]
     mov [di], ax
@@ -543,7 +542,7 @@ mm_loop:
     PRINT msg_menu_title
     PRINT msg_menu_options
     PRINT msg_choice
-    call ReadNumber      ; AX = choice
+    call ReadNumber      
 
     cmp ax, 1
     je  mm_show
@@ -590,7 +589,7 @@ main_loop:
     PRINT msg_main_title
     PRINT msg_main_menu
     PRINT msg_choice
-    call ReadNumber      ; AX = choice
+    call ReadNumber     
 
     cmp ax, 1
     je  go_menu
@@ -610,6 +609,3 @@ quit:
 MAIN ENDP
 
 END MAIN
-
-
-
