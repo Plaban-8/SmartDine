@@ -13,6 +13,20 @@ EXIT_MSG        DB 0Dh, 0Ah, 'Exiting System...$'
 ADMIN_PASS      DB '1234'
 WAITER_PASS     DB '5678'
 
+; Bill and Sales Data
+MsgSubtotal    DB 10,13, 'Subtotal: $'
+MsgTax         DB 10,13, 'Tax (5%): $'
+MsgService     DB 10,13, 'Service (2%): $'
+MsgGrandTotal  DB 10,13, 'Grand Total: $'
+MsgPaid        DB 10,13, 'Bill Paid. Table Released.$'
+DailyRevenue   DW 0
+TotalOrders    DW 0
+
+; Sales History Messages
+MsgSalesHeader DB 10, 13, '=== Sales History ===$'
+MsgShowOrders  DB 10, 13, 'Total Orders Completed: $'
+MsgShowRevenue DB 10, 13, 'Total Revenue Generated: $'
+MsgPressKey    DB 10, 13, 'Press any key to return...$'
 
 ; MENU DATA
 NUM_DISHES EQU 3
@@ -80,14 +94,18 @@ MsgAskIng     DB 10, 13, 'Increase Quantity Of (1-6): $'
 MsgAskQty     DB 10, 13, 'Quantity to add: $'
 MsgRestocked  DB 10, 13, 'Quantity Successfully increased!$'
 
+; Price Update Messages (NEW)
+MsgUpdatePrice  DB 10, 13, 'Enter New Price (e.g. 25) and press ENTER: $'
+MsgPriceUpdated DB 10, 13, 'Price Updated Successfully!$'
+
 ; Menu item display
 MsgDot        DB '. $'
 MsgPrice      DB ' - $'
 MsgDollar     DB '$'
 
 ; Dashboard Menus
-AdminMenuTxt    DB 10, 13, '=== Admin Dashboard ===', 10, 13, '1. Show Inventory', 10, 13, '2. Restock Inventory', 10, 13, '3. Logout', 10, 13, 'Select: $'
-WaiterMenuTxt   DB 10, 13, '=== Waiter Dashboard ===', 10, 13, '1. Show Tables', 10, 13, '2. Take Order', 10, 13, '3. Logout', 10, 13, 'Select: $'
+AdminMenuTxt    DB 10, 13, '=== Admin Dashboard ===', 10, 13, '1. Show Inventory', 10, 13, '2. Restock Inventory', 10, 13, '3. Sales History', 10, 13, '4. Update Dish Prices', 10, 13, '5. Logout', 10, 13, 'Select: $'
+WaiterMenuTxt   DB 10, 13, '=== Waiter Dashboard ===', 10, 13, '1. Show Tables', 10, 13, '2. Take Order', 10,13, '3. Generate Bill', 10, 13, '4. Logout', 10, 13, 'Select: $'
 
 ; Temp storage
 InputBuffer   DB 6 DUP(0)
@@ -99,7 +117,6 @@ CurrentDish   DW 0
 MAIN PROC
 
 ; initialize DS
-
 MOV AX,@DATA
 MOV DS,AX
  
@@ -179,6 +196,10 @@ ADMIN_DASHBOARD:
     CMP AL, '2'
     JE CALL_RESTOCK
     CMP AL, '3'
+    JE CALL_SHOW_SALES
+    CMP AL, '4'
+    JE CALL_UPDATE_PRICE
+    CMP AL, '5'
     JE MAIN_MENU
     JMP ADMIN_DASHBOARD
     
@@ -190,21 +211,36 @@ CALL_RESTOCK:
     CALL RESTOCK_INVENTORY
     JMP ADMIN_DASHBOARD
 
+CALL_SHOW_SALES:
+    CALL SHOW_SALES_HISTORY
+    JMP ADMIN_DASHBOARD
+
+CALL_UPDATE_PRICE:
+    CALL UPDATE_DISH_PRICE
+    JMP ADMIN_DASHBOARD
+    
 WAITER_DASHBOARD:
     LEA DX, WaiterMenuTxt
     MOV AH, 9
     INT 21H
-    
+
     MOV AH, 1
     INT 21H
-    
+
     CMP AL, '1'
     JE CALL_SHOW_TABLES
     CMP AL, '2'
     JE CALL_TAKE_ORDER
     CMP AL, '3'
+    JE CALL_GENERATE_BILL
+    CMP AL, '4'
     JE MAIN_MENU
     JMP WAITER_DASHBOARD
+
+CALL_GENERATE_BILL:
+    CALL GENERATE_BILL
+    JMP WAITER_DASHBOARD
+
     
 CALL_SHOW_TABLES:
     CALL SHOW_TABLES
@@ -227,8 +263,6 @@ EXIT_PROGRAM:
     MOV AH, 9
     INT 21H
 
-;exit to DOS
-               
 MOV AX,4C00H
 INT 21H
 
@@ -258,8 +292,6 @@ CONTINUE_LOOP:
 
 CHECK_PASSWORD ENDP
 
-;Waiter feature procedures
-
 SHOW_TABLES PROC
     PUSH AX
     PUSH BX
@@ -271,7 +303,7 @@ SHOW_TABLES PROC
     INT 21H
     
     MOV CX, NUM_TABLES
-    MOV BX, 0           
+    MOV BX, 0            
     
 SHOW_TABLE_LOOP:
     LEA DX, MsgTable
@@ -282,7 +314,6 @@ SHOW_TABLE_LOOP:
     INC AX              ; Convert to 1-based
     CALL PRINT_NUMBER
     
-    ;table status check and print Available/Occupied
     MOV AL, TableStatus[BX]
     CMP AL, 0
     JNE PRINT_OCCUPIED
@@ -319,7 +350,6 @@ GET_TABLE:
     MOV AH, 9
     INT 21H
     
-    ;read table num
     MOV AH, 01H
     INT 21H
     
@@ -327,40 +357,32 @@ GET_TABLE:
     MOV BL, AL
     MOV BH, 0
     
-    ;If outside valid table num, ask again
     CMP BX, NUM_TABLES
     JAE GET_TABLE 
     
-    ; Check if table is available
     MOV AL, TableStatus[BX]
     CMP AL, 0
     JE TABLE_OK
     
-    ;table occupied error
     LEA DX, MsgTableOccErr
     MOV AH, 9
     INT 21H
     JMP GET_TABLE
     
 TABLE_OK:
-    ;save current table index
     MOV CurrentTable, BX
     
-    ;order header
     LEA DX, MsgOrderFor
     MOV AH, 9
     INT 21H
     
-    ;print table num
     MOV AX, BX
-    INC AX              ; 1-based for display
+    INC AX              
     CALL PRINT_NUMBER
     
-    ;show food menu
     CALL SHOW_MENU
 
 GET_DISH:
-    ;ask for dish number
     LEA DX, MsgAskDish
     MOV AH, 9
     INT 21H
@@ -372,15 +394,12 @@ GET_DISH:
     MOV BL, AL
     MOV BH, 0
     
-    ;check if dish within range
     CMP BX, NUM_DISHES
-    JAE GET_DISH       
+    JAE GET_DISH        
     
-    ;save dish index
     MOV CurrentDish, BX
     
-    ;check inventory for both ingredients
-    ;get first ingredient index
+    ;check inventory
     MOV SI, BX
     MOV AL, DishIng1[SI]
     MOV AH, 0
@@ -390,7 +409,6 @@ GET_DISH:
     CMP AX, 1
     JB NO_STOCK         
     
-    ;get second ingredient index
     MOV SI, CurrentDish
     MOV AL, DishIng2[SI]
     MOV AH, 0
@@ -400,8 +418,7 @@ GET_DISH:
     CMP AX, 1
     JB NO_STOCK         
     
-    ;both ingredients available - deduct inventory
-    ;deduct first ingredient
+    ;deduct inventory
     MOV SI, CurrentDish
     MOV AL, DishIng1[SI]
     MOV AH, 0
@@ -409,7 +426,6 @@ GET_DISH:
     SHL SI, 1
     DEC IngQty[SI]
     
-    ;deduct second ingredient
     MOV SI, CurrentDish
     MOV AL, DishIng2[SI]
     MOV AH, 0
@@ -417,23 +433,22 @@ GET_DISH:
     SHL SI, 1
     DEC IngQty[SI]
     
-    ;update table status and bill
     MOV BX, CurrentTable
-    MOV TableStatus[BX], 1      ;mark as occupied
+    MOV TableStatus[BX], 1      
     
-    ;add dish price to table bill
     MOV SI, CurrentDish
-    SHL SI, 1                             
+    SHL SI, 1                                     
     MOV AX, DishPrice[SI]
-    SHL BX, 1                    
+    MOV BX, CurrentTable
+    SHL BX, 1                     
     ADD TableBill[BX], AX
     
-    ;store order details
     MOV BX, CurrentTable
+    SHL BX, 1                     ; Point back to current table index
+    SHR BX, 1                     ; Restore index for counts
     MOV AL, TableOrderCounts[BX]
     MOV AH, 0
     
-    ;check max orders
     CMP AL, MAX_ORDERS_PER_TABLE
     JAE SKIP_STORAGE    
     
@@ -445,17 +460,14 @@ GET_DISH:
     ADD AX, DX          
     MOV SI, AX
     
-    ;store dish id
     MOV AX, CurrentDish
     MOV TableOrders[SI], AL
     
-    ;increment count
     MOV BX, CurrentTable
     INC TableOrderCounts[BX]
     
 SKIP_STORAGE:
     
-    ;print success message with total (running total)
     LEA DX, MsgSuccess
     MOV AH, 9
     INT 21H
@@ -469,7 +481,6 @@ SKIP_STORAGE:
     MOV AH, 9
     INT 21H
     
-    ;ask to order another
     LEA DX, MsgOrderAnother
     MOV AH, 9
     INT 21H
@@ -511,7 +522,7 @@ SHOW_MENU PROC
     INT 21H
 
     MOV CX, NUM_DISHES
-    MOV BX, 0           ; Dish index
+    MOV BX, 0            
     
 SHOW_DISH_LOOP:
     LEA DX, MsgNewline
@@ -525,12 +536,12 @@ SHOW_DISH_LOOP:
     MOV AH, 9
     INT 21H
     
-    ;print dish name (15 chars)
     MOV SI, BX
     MOV AX, DISH_NAME_LEN
     MUL SI 
     MOV SI, AX
     
+    PUSH CX
     MOV CX, DISH_NAME_LEN
 PRINT_DISH_NAME:
     MOV DL, DishName[SI]
@@ -538,17 +549,14 @@ PRINT_DISH_NAME:
     INT 21H
     INC SI
     LOOP PRINT_DISH_NAME
-    
-    MOV CX, NUM_DISHES
-    SUB CX, BX
+    POP CX
     
     LEA DX, MsgPrice
     MOV AH, 9
     INT 21H
     
-    ;print price
     PUSH BX
-    SHL BX, 1           
+    SHL BX, 1            
     MOV AX, DishPrice[BX]
     CALL PRINT_NUMBER
     POP BX
@@ -593,7 +601,7 @@ SHOW_ING_LOOP:
     
     MOV SI, BX
     MOV AX, ING_NAME_LEN
-    MUL SI              ; AX = offset into IngName
+    MUL SI              
     MOV SI, AX
     
     PUSH CX
@@ -634,7 +642,6 @@ RESTOCK_INVENTORY PROC
     PUSH DX
     
 GET_ING:
-    ;ask for ingredient number
     LEA DX, MsgAskIng
     MOV AH, 9
     INT 21H
@@ -642,32 +649,26 @@ GET_ING:
     MOV AH, 01H
     INT 21H
     
-    SUB AL, '1'         ; Convert ASCII to 0-based index
+    SUB AL, '1'         
     MOV BL, AL
     MOV BH, 0
     
-    ; check if ing within range
     CMP BX, NUM_INGS
-    JAE GET_ING         ; If >= NUM_INGS, ask again
+    JAE GET_ING         
     
-    ;save ingredient index
     PUSH BX
     
-    ;ask for quantity
     LEA DX, MsgAskQty
     MOV AH, 9
     INT 21H
     
-    ;read quantity
     MOV AH, 01H
     INT 21H
     
-    ;convert to number
     SUB AL, '0'         
     MOV AH, 0
     MOV CX, AX 
     
-    ;iupdate inventory
     POP BX
     SHL BX, 1        
     ADD IngQty[BX], CX
@@ -683,6 +684,139 @@ GET_ING:
     RET
 RESTOCK_INVENTORY ENDP
 
+SHOW_SALES_HISTORY PROC
+    PUSH AX
+    PUSH BX
+    PUSH DX
+
+    LEA DX, MsgSalesHeader
+    MOV AH, 9
+    INT 21H
+
+    LEA DX, MsgShowOrders
+    MOV AH, 9
+    INT 21H
+    
+    MOV AX, TotalOrders
+    CALL PRINT_NUMBER
+
+    LEA DX, MsgShowRevenue
+    MOV AH, 9
+    INT 21H
+    
+    MOV AX, DailyRevenue
+    CALL PRINT_NUMBER
+    
+    LEA DX, MsgDollar
+    MOV AH, 9
+    INT 21H
+    
+    LEA DX, MsgPressKey
+    MOV AH, 9
+    INT 21H
+    
+    MOV AH, 1
+    INT 21H
+
+    POP DX
+    POP BX
+    POP AX
+    RET
+SHOW_SALES_HISTORY ENDP
+
+; === UPDATED PROCEDURE: MULTI-DIGIT UPDATE ===
+UPDATE_DISH_PRICE PROC
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+
+    CALL SHOW_MENU ; Show items first
+
+    LEA DX, MsgAskDish
+    MOV AH, 9
+    INT 21H
+    
+    MOV AH, 01H
+    INT 21H
+    SUB AL, '1'
+    MOV BL, AL
+    MOV BH, 0
+    
+    CMP BX, NUM_DISHES
+    JAE UPD_EXIT_MD
+
+    PUSH BX ; Save the Dish ID
+
+    LEA DX, MsgUpdatePrice
+    MOV AH, 9
+    INT 21H
+
+    CALL READ_NUM ; Get multi-digit number into AX
+    MOV CX, AX    ; Move new price to CX
+
+    POP BX        ; Restore Dish ID
+    SHL BX, 1     ; Offset for DW array
+    MOV SI, BX
+    MOV DishPrice[SI], CX
+
+    LEA DX, MsgPriceUpdated
+    MOV AH, 9
+    INT 21H
+
+UPD_EXIT_MD:
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+UPDATE_DISH_PRICE ENDP
+
+; === NEW PROCEDURE: READ MULTI-DIGIT INPUT ===
+; Returns the number in AX
+READ_NUM PROC
+    PUSH BX
+    PUSH CX
+    PUSH DX
+
+    MOV BX, 0    ; Initialize result to 0
+    MOV CX, 10   ; Multiplier
+
+READ_LOOP:
+    MOV AH, 01H  ; Read character
+    INT 21H
+
+    CMP AL, 13   ; Check if Enter key (Carriage Return)
+    JE READ_DONE
+
+    SUB AL, '0'  ; Convert ASCII to digit
+    MOV AH, 0
+    
+    ; --- FIX START ---
+    PUSH AX      ; Save the digit on the Stack because MUL will destroy DX
+    
+    MOV AX, BX   ; Move current total to AX
+    MUL CX       ; Multiply Total * 10. Result goes to DX:AX. 
+                 ; DX is now overwritten (likely 0), but our digit is safe on stack.
+    
+    POP DX       ; Restore the digit from stack into DX
+    ADD AX, DX   ; Add digit to the total
+    ; --- FIX END ---
+    
+    MOV BX, AX   ; Store back in BX
+    JMP READ_LOOP
+
+READ_DONE:
+    MOV AX, BX   ; Return result in AX
+    POP DX
+    POP CX
+    POP BX
+    RET
+READ_NUM ENDP
+
+
 PRINT_NUMBER PROC
     PUSH AX
     PUSH BX
@@ -693,9 +827,9 @@ PRINT_NUMBER PROC
     MOV CX, 0           
     
 CONVERT_LOOP:
-    MOV DX, 0           
+    MOV DX, 0            
     DIV BX              
-    PUSH DX            
+    PUSH DX             
     INC CX
     CMP AX, 0
     JNE CONVERT_LOOP
@@ -714,4 +848,94 @@ PRINT_LOOP:
     RET
 PRINT_NUMBER ENDP
 
-    END MAIN
+GENERATE_BILL PROC
+    PUSH AX
+    PUSH BX
+    PUSH CX
+    PUSH DX
+    PUSH SI
+    PUSH DI
+
+    LEA DX, MsgAskTable
+    MOV AH, 9
+    INT 21H
+
+    MOV AH, 1
+    INT 21H
+    SUB AL, '1'
+    MOV AH, 0
+    MOV DI, AX
+            
+
+    MOV SI, DI
+    ADD SI, SI
+
+    MOV AX, TableBill[SI]
+    CMP AX, 0
+    JE GB_EXIT
+
+    MOV TempNum, AX    
+
+
+    LEA DX, MsgSubtotal
+    MOV AH, 9
+    INT 21H
+    MOV AX, TempNum
+    CALL PRINT_NUMBER
+
+    LEA DX, MsgTax
+    MOV AH, 9
+    INT 21H
+    MOV AX, TempNum
+    MOV CX, 5
+    MUL CX                
+    MOV CX, 100
+    DIV CX              
+    PUSH AX
+    CALL PRINT_NUMBER
+
+    LEA DX, MsgService
+    MOV AH, 9
+    INT 21H
+    MOV AX, TempNum
+    MOV CX, 2
+    MUL CX
+    MOV CX, 100
+    DIV CX                
+    PUSH AX
+    CALL PRINT_NUMBER
+
+    LEA DX, MsgGrandTotal
+    MOV AH, 9
+    INT 21H
+    POP CX             
+    POP BX                
+    MOV AX, TempNum
+    ADD AX, BX
+    ADD AX, CX
+    PUSH AX
+    CALL PRINT_NUMBER
+
+    POP AX
+    ADD DailyRevenue, AX
+    INC TotalOrders
+
+    LEA DX, MsgPaid
+    MOV AH, 9
+    INT 21H
+
+    MOV TableStatus[DI], 0
+    MOV TableBill[SI], 0
+    MOV TableOrderCounts[DI], 0
+
+GB_EXIT:
+    POP DI
+    POP SI
+    POP DX
+    POP CX
+    POP BX
+    POP AX
+    RET
+GENERATE_BILL ENDP
+
+END MAIN
